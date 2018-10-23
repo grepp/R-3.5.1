@@ -58,6 +58,10 @@
 # include <unistd.h>		/* for unlink */
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
 extern SA_TYPE SaveAction;
 extern Rboolean UsingReadline;
 extern FILE* ifp; /* from system.c */
@@ -1122,7 +1126,7 @@ void attribute_hidden Rstd_Busy(int which)
    If ask = SA_SUICIDE, no save, no .Last, possibly other things.
  */
 
-int R_removeDirectory(const char *path)
+int R_RemoveDirectory(const char *path)
 {
    DIR *d = opendir(path);
    size_t path_len = strlen(path);
@@ -1152,7 +1156,7 @@ int R_removeDirectory(const char *path)
 
              if (!stat(buf, &statbuf)) {
                 if (S_ISDIR(statbuf.st_mode)) {
-                   r2 = R_removeDirectory(buf);
+                   r2 = R_RemoveDirectory(buf);
                 } else {
                    r2 = unlink(buf);
                 }
@@ -1183,7 +1187,7 @@ void R_CleanTempDir(void)
 	chdir(R_HomeDir());
 #endif
 
-	R_removeDirectory(Sys_TempDir);
+	R_RemoveDirectory(Sys_TempDir);
     }
 }
 
