@@ -1122,24 +1122,70 @@ void attribute_hidden Rstd_Busy(int which)
    If ask = SA_SUICIDE, no save, no .Last, possibly other things.
  */
 
+int R_removeDirectory(const char *path)
+{
+   DIR *d = opendir(path);
+   size_t path_len = strlen(path);
+   int r = -1;
 
+   if (d) {
+      struct dirent *p;
+      r = 0;
+
+      while (!r && (p=readdir(d))) {
+          int r2 = -1;
+          char *buf;
+          size_t len;
+
+          /* Skip the names "." and ".." as we don't want to recurse on them. */
+          if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
+             continue;
+          }
+
+          len = path_len + strlen(p->d_name) + 2; 
+          buf = malloc(len);
+
+          if (buf) {
+             struct stat statbuf;
+
+             snprintf(buf, len, "%s/%s", path, p->d_name);
+
+             if (!stat(buf, &statbuf)) {
+                if (S_ISDIR(statbuf.st_mode)) {
+                   r2 = R_removeDirectory(buf);
+                } else {
+                   r2 = unlink(buf);
+                }
+             }
+
+             free(buf);
+          }
+
+          r = r2;
+      }
+
+      closedir(d);
+   }
+
+   if (!r) {
+      r = rmdir(path);
+   }
+
+   return r;
+}
 
 void R_CleanTempDir(void)
 {
-    char buf[1024];
-
     if((Sys_TempDir)) {
 // Only __sun is neeed on Solaris >= 10 (2005).
 #if defined(__sun) || defined(sun)
 	/* On Solaris the working directory must be outside this one */
 	chdir(R_HomeDir());
 #endif
-	snprintf(buf, 1024, "rm -Rf %s", Sys_TempDir);
-	buf[1023] = '\0';
-	R_system(buf);
+
+	R_removeDirectory(Sys_TempDir);
     }
 }
-
 
 void attribute_hidden NORET Rstd_CleanUp(SA_TYPE saveact, int status, int runLast)
 {
